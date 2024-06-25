@@ -19,6 +19,14 @@ class CustomUser(AbstractUser):
     address = models.CharField(max_length=255)
     contact_number = models.CharField(max_length=20)
 
+    @property
+    def is_doctor(self):
+        return self.role == 'doctor'
+
+    @property
+    def is_patient(self):
+        return self.role == 'patient'
+
 class Doctor(models.Model):
     DOC_AVAILABLE = (
         ('is_available', 'is_available'),
@@ -52,12 +60,12 @@ class Appointment(models.Model):
     appointment_time=models.TimeField()
     whatfor = models.TextField(max_length=255, blank=True, null=True)
     status=models.CharField(max_length=50,choices=APPOINTMENT_CHOICES)
-    doctor=models.ForeignKey(CustomUser,related_name='doctor_appointments',null=True,blank=True, on_delete=models.SET_NULL)
+    doctor=models.ForeignKey(Doctor,related_name='doctor_appointments', on_delete=models.CASCADE)
     patient = models.ForeignKey(CustomUser, related_name='patient_appointments',on_delete=models.CASCADE)
 
 class MedicalRecord(models.Model):
-    patient = models.ForeignKey(CustomUser, related_name='medical_records_patient', on_delete=models.CASCADE)
-    doctor = models.ForeignKey(CustomUser, related_name='medical_records_doctor', on_delete=models.CASCADE)
+    patient = models.ForeignKey(Patient, related_name='medical_records_patient', on_delete=models.CASCADE)
+    doctor = models.ForeignKey(Doctor, related_name='medical_records_doctor', on_delete=models.CASCADE)
     diagnosis = models.TextField()
     treatment = models.TextField()
     test_results = models.TextField(blank=True, null=True)

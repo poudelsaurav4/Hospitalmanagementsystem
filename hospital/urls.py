@@ -15,4 +15,6 @@ router.register(r'prescription', DocPrescription, basename='prescription')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('doctors/', DoctorCreateView.as_view(), name='doctor-create'),
+
 ]

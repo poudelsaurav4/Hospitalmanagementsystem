@@ -2,15 +2,21 @@ from rest_framework import serializers
 from hospital.models import *
 from django.contrib.auth import authenticate
 from rest_framework.validators import UniqueValidator
+from django.contrib.auth.models import Group
 from django.db import IntegrityError
+from django.contrib.auth.models import Group, Permission
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id','username','first_name','last_name', 'email', 'password','address','gender','ssssssssssssroles']
+        fields = ['id','username','first_name','last_name', 'email', 'password','address','gender','roles']
 
-
+class GroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Group
+        fields = ['id','name']
+        
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
@@ -40,7 +46,19 @@ class RegisterSerializer(serializers.ModelSerializer):
                                                 roles = validated_data['roles']
                                                 )
         return user
+class DoctorSerializer(serializers.ModelSerializer):
+    user = RegisterSerializer()
 
+    class Meta:
+        model = Doctor
+        fields = ['id', 'user', 'speciality', 'availability'    ]
+
+    def create(self, validated_data):
+        user_data = validated_data.pop('user')
+        user_data['roles'] = 'doctor'
+        user = CustomUser.objects.create_user(**user_data)
+        doctor = Doctor.objects.create(user=user, **validated_data)
+        return doctor
 
 class PatientSerializer(serializers.ModelSerializer):
     class Meta:
@@ -49,38 +67,34 @@ class PatientSerializer(serializers.ModelSerializer):
 
 
 class AppointmentSerializer(serializers.ModelSerializer):
-    patient = serializers.PrimaryKeyRelatedField(many=True, read_only=False, queryset=CustomUser.objects.filter(roles = 'Patient'))
-    doctor = serializers.PrimaryKeyRelatedField(many = True,read_only= False, queryset = CustomUser.objects.filter(roles = 'Doctor'))
     class Meta:
         model = Appointment
         fields = ['id','appointment_date','appointment_time','whatfor' ,'status', 'doctor','patient']
 
-    def validate(self, data):
-        doctor = data.get('doctor')
-        patient = data.get('patient')
 
+    doctor = serializers.PrimaryKeyRelatedField(queryset=Doctor.objects.all())
+    patient = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.filter(roles='Patient'))
+    # def validate(self, data):
+    #     doctor = data.get('doctor')
+    #     patient = data.get('patient')
         
-        if doctor and not CustomUser.objects.filter(roles='doctor').exists():
-            raise serializers.ValidationError("Selected doctor does not exist.")
+    #     if doctor and not CustomUser.objects.filter(roles='Doctor').exists():
+    #         raise serializers.ValidationError("Selected doctor does not exist.")
 
-        if patient and not CustomUser.objects.filter(roles='patient').exists():
-            raise serializers.ValidationError("Selected patient does not exist.")
+    #     return data
 
-        return data
-
-    def create(self, validated_data):
-        try:
-            appointment = Appointment.objects.create(
-                doctor=validated_data.get('doctor'),
-                patient=validated_data.get('patient'),
-                whatfor=validated_data['whatfor'],
-                appointment_time=validated_data['appointment_time'],
-                appointment_date = validated_data['appointment_date'],
-                status=validated_data['status']
-            )
-            return appointment
-        except IntegrityError:
-            raise serializers.ValidationError("Foreign key constraint failed. Ensure the selected doctor and patient exist.")
+    # def create(self, validated_data):
+    #     try:
+    #         appointment = Appointment.objects.create(
+    #             doctor=validated_data['doctor'],
+    #             whatfor=validated_data['whatfor'],
+    #             appointment_time=validated_data['appointment_time'],
+    #             appointment_date = validated_data['appointment_date'],
+    #             status=validated_data['status']
+    #         )
+    #         return appointment
+    #     except IntegrityError:
+    #         raise serializers.ValidationError("Foreign key constraint failed. Ensure the selected doctorexists.")
     
 
 
